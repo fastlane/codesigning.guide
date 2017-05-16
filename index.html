@@ -1,0 +1,290 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>Code Signing Guide for Teams</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="assets/css/vendor/bootstrap/bootstrap.min.css" />
+  <link rel="stylesheet" href="assets/css/extra_simil_bootstrap.css" />
+  <link rel="stylesheet" href="assets/css/style.min.css" />
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-20906421-13', 'auto');
+  ga('send', 'pageview');
+
+</script>  
+</head>
+<body>
+  <div class="container new-approach text-center">
+    <h2>
+      A new approach to code signing
+    </h2>
+    <h4>
+      A best practices guide on how to manage certificates
+      and provisioning profiles in your development team.
+    </h4>
+    <p>
+      Wait, what is code signing? Code signing is required on iOS when distributing your app to customers. It assures that your app can be trusted and hasn’t been modified since it was last signed.
+    </p>
+    <p>
+      See <a href="https://developer.apple.com/support/code-signing/" target="_blank">Apple’s docs</a> for more general details on code signing.
+    </p>
+    <img src="assets/img/cs-down-arrow.png" class="down-arrow" />
+  </div>
+  <hr>
+  <div class="container the-problem">
+    <h2 class="text-center">
+      The Problem:
+      <br> Code Signing with Teams
+    </h2>
+    <p>
+      When deploying an app to the App Store, a beta testing service or even installing it on a single device, most development teams have separate code signing identities for every member. This results in dozens of profiles including a lot of duplicates.
+    </p>
+    <div class="img_container text-center">
+      <img src="assets/img/cs-the-problem.png" class="img-responsive" alt="Update provisioning profiles across machines" />
+    </div>
+    <p>
+      You have to manually renew and download the latest set of provisioning profiles every time you add a new device or a certificate expires. Additionally this requires spending a lot of time when setting up a new machine that will build your app.
+    </p>
+  </div>
+  <hr>
+  <div class="container the-solution">
+    <h2 class="text-center">
+      Solution:
+      <br/> Keep Your Keys In-Sync with Git
+    </h2>
+    <p class="the-solution-top">
+      What if there was a central place where your code signing identity and profiles are kept, so anyone can access them during the build process? This way, your entire team can use the same account and have one code signing identity without any manual work or confusion.
+    </p>
+    <p class="the-solution-top">
+      Instead of registering for <em>yet</em> another service, you can use a separate private Git repo to sync your profiles across multiple machines.
+    </p>
+    <div class="img_container text-center">
+      <img src="assets/img/cs-git-img.png" class="img-responsive" alt="Your Keys In-Sync with Git" />
+    </div>
+    <h5>
+      How to use Git for code signing:
+    </h5>
+    <p>
+      The basic requirement is to have <u>one code signing identity</u> shared across your team. The easiest way to do that is to create a new Apple ID for the team (e.g. ios-dev@company.com) and use that from now on. To get started:
+    </p>
+    <p>
+      1. First, create a new, private Git repo in which you can store the profiles.
+    </p>
+    <p>
+      2. Next, create a new private key and certificate for each environment, such as “Distribution” and “Development”. Then store these private keys and certificates in your Git repo.
+    </p>
+    <p>
+      3. Then, create a new provisioning profiles for the various targets, such as “Development”, “App Store” and “Ad hoc” with the matching certificates and store these in your Git repo.
+    </p>
+    <p>
+      4. Before committing the files to Git, it is recommended to encrypt those files (e.g. using openssl).
+    </p>
+    <p>
+      5. Now, each of your machines can access the Git repo and install the latest certificate and provisioning profiles:
+      <span>- The certificates and private keys should be imported into your Keychain, either using Finder or using the 'security import' command </span>
+      <span>- The provisioning profiles should be copied over to '~/Library/MobileDevice/Provisioning\ Profiles/'</span>
+    </p>
+    <p>
+      6. Your Xcode project must be configured to choose the provisioning profiles automatically or define it statically. The ideal solution is to pass the UUID of the provisioning profile, via an environment variable, for each of your bundle identifiers.
+    </p>
+    <p>
+      In the future, when you add a new device to your Ad Hoc or Development provisioning profile, you can update the profile in your Git repo.
+    </p>
+    <p>
+      &nbsp;
+    </p>
+    <h5>
+      Things to consider:
+    </h5>
+    <ul class="smaller">
+      <li>
+        <p>
+          Make sure the provisioning profile is created using the correct certificate
+        </p>
+      </li>
+      <li>
+        <p>
+          If your app has multiple targets (e.g. Today widget) you have to repeat the above for each target
+        </p>
+      </li>
+      <li>
+        <p>
+          Don’t set the provisioning profile in your Xcode project to Automatic, as it doesn’t always select the correct profile
+        </p> 
+      </li>
+    </ul>
+    <h5>
+      Is this secure?
+    </h5>
+    <p>
+      <a id="learn-more" href="#">Expand for more </a>
+    </p>
+    <div class="secure-collapse">
+      <p>
+        Both your keys and provisioning profiles are encrypted using OpenSSL using a passphrase.
+      </p>
+      <p>
+        Storing your private keys in a Git repo may sound off-putting at first. We did an in-depth analysis of potential security issues and came to the following conclusion:
+      </p>
+      <p class="subtitle">
+        What could happen if someone stole a private key?
+      </p>
+      <p>
+        If attackers would have your certificate and provisioning profile, they could codesign an application with the same bundle identifier.
+      </p>
+      <p>
+        What's the worst that could happen for each of the profile types?
+      </p>
+      <p class="black">
+        App Store Profiles
+      </p>
+      <p>
+        An App Store profile can't be used for anything as long as it's not re-signed by Apple. The only way to get an app resigned is to submit an app for review (which takes around 7 days). Attackers could only submit an app for review, if they also got access to your iTunes Connect credentials (which are not stored in Git, but in your local keychain). Additionally you get an email notification every time a build gets uploaded to cancel the submission even before your app gets into the review stage.
+      </p>
+      <p class="black">
+        Development and Ad Hoc Profiles
+      </p>
+      <p>In general those profiles are harmless as they can only be used to install a signed application on a small subset of devices. To add new devices, the attacker would also need your Apple Developer Portal credentials (which are not stored in Git, but in your local keychain).
+      </p>
+      <p class="black">
+        Enterprise Profiles
+      </p>
+      <p>
+        Attackers could use an In-House profile to distribute signed application to a potentially unlimited number of devices. All this would run under your company name and it could eventually lead to Apple revoking your In-House account. However it is very easy to revoke a certificate to remotely break the app on all devices.
+      </p>
+      <p>
+        Because of the potentially dangerous nature of In-House profiles we decided to not allow the use of match with enterprise accounts.
+      </p>
+      <p class="black">
+        To sum up
+      </p>
+      <ul class="smaller">
+        <li>
+          <p>
+            You have full control over the access list of your Git repo, no third party service involved
+          </p>
+        </li>
+        <li>
+          <p>
+          Even if your certificates are leaked, they can't be used to cause any harm without your iTunes Connect login credentials
+          </p>
+        </li>
+        <li>
+          <p>
+          Match does not currently support In-House Enterprise profiles as they are harder to control
+          </p>
+        </li>
+        <li>
+          <p>
+          If you use GitHub or Bitbucket we encourage enabling 2 factor authentication for all accounts that have access to the certificates repo
+          </p>
+        </li>
+      </ul>
+    </div>
+  </div>
+  <hr>
+  <div id="match" class="bg-container">
+    <div class="container things-simple">
+      <h2 class="text-center">
+        Making things simple with <i>match</i>
+      </h2>
+      <h4 class="text-center">
+        To make it easy for you to implement this new approach to code signing, <a href="https://fastlane.tools/" target="_blank">fastlane</a> now provides a new tool called <a href="https://github.com/fastlane/fastlane/tree/master/match#readme" target="_blank">match</a>.
+      </h4>
+      <h4 class="text-center">
+        <strong><a href="https://fastlane.tools/" target="_blank">match</a></strong> takes care of all the heavy lifting for you, including:
+      </h4>
+      <div class="row including-tools">
+        <div class="col-xs-12 col-md-4 ">
+          <img src="assets/img/cs-icon-identity.jpg" alt="Generates your code signing identity" />
+          <p class="italic">
+            Generates your code signing identity and provisioning profiles if necessary.
+          </p>
+        </div>
+        <div class="col-xs-12 col-md-4">
+          <img src="assets/img/cs-icon-storing.jpg" alt="Stores everything in a separate Git repository" />
+          <p class="italic">
+            Stores all certificates and provisioning profiles in a separate Git repository.
+          </p>
+        </div>
+        <div class="col-xs-12 col-md-4">
+          <img src="assets/img/cs-icon-installation.jpg" alt="Automatically installs the certificates" />
+          <p class="italic">
+            Automatically installs the certificates and provisioning profiles from the repository.
+          </p>
+        </div>
+      </div>
+      <p>
+        To get started, create a new private Git repo and run:
+      </p>
+      <div class="coding">
+        match init
+      </div>
+      <img src="assets/img/cs-match-init.gif" alt="match init" class="gif-anim img-responsive" />
+      <p>
+        To generate and store new certificates and provisioning profiles run:
+      </p>
+      <div class="coding">
+        match appstore
+      </div>
+      <p> 
+        Or: 
+      </p>
+      <div class="coding">
+        match development
+      </div>
+      <img src="assets/img/cs-match-appstore-big.gif" alt="match appstore" class="gif-anim img-responsive" />
+      <p>
+        On a new machine, just run <span class="inline-coding">match appstore</span> to install the existing certificates.
+      </p>
+      <p>
+        If you never really cared about code signing and have a messy Apple Developer account with a lot of invalid, expired or Xcode managed profiles/certificates, you can use the <span class="inline-coding">match nuke</span> command to completely clear your developer portal.
+      </p>
+      <p>
+        This command will revoke all certificates and provisioning profiles for a specific environment.
+      </p>
+      <p>
+        Simply run:
+      </p>
+      <div class="coding">
+        match nuke development
+        <br>match nuke distribution
+      </div>
+      <img src="assets/img/cs-match-nuke.gif" alt="" class="gif-anim img-responsive" />
+      <div class="bottom-img text-center">
+        <img src="assets/img/cs-open-source.png" alt="100% Cpen Source" />
+        <a href="https://github.com/fastlane/fastlane/tree/master/match#readme" target="_blank">
+          <img src="assets/img/get-match-on-fastlane.png" alt="get match on fastlane" class="get-match" style="width:320px; height:140px;" />
+        </a>
+      </div>
+    </div>
+  </div>
+  <hr>
+  <div class="container learn-more text-center">
+    <h2 class="text-center" style="font-size:45px!important;">
+      Reduce the time it takes to build &amp; deploy your app
+    </h2>
+    <h4 style="font-size:26px!important;">
+      Learn more about how fastlane unifies and automates your app's release process.
+    </h4>
+    <a href="https://fastlane.tools/" target="_blank"><img src="assets/img/cs-fastlane-logo.png" alt="Fastlane" style="width:268px; height:71px;"></a>
+  </div>
+  <div class="footer">
+    <div class="container">
+      <div class="row">
+        <div class="col-xs-12 col-md-11">
+          <a href="https://www.google.com/policies/terms/">Terms</a> | <a href="https://www.google.com/policies/privacy/">Privacy</a> Updated Jan 27, 2017
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="assets/js/vendor/jquery/jquery.min.js"></script>
+  <script src="assets/js/main.min.js"></script>
+  <script src="assets/js/vendor/bootstrap/bootstrap.min.js"></script>
+  <script src="//localhost:8080/livereload.js" charset="utf-8"></script>
+</body>
